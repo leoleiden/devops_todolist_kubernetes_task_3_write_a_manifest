@@ -1,10 +1,12 @@
 from django.contrib.auth.models import User
 from rest_framework import permissions, viewsets
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 
 from api.serializers import TodoListSerializer, TodoSerializer, UserSerializer
 from lists.models import Todo, TodoList
 
-from django.http import HttpResponse
+from django.http import HttpResponse # Цей імпорт вже був присутній і потрібен для HttpResponse
 from django.utils import timezone
 import time
 
@@ -56,3 +58,23 @@ class TodoViewSet(viewsets.ModelViewSet):
         user = self.request.user
         creator = user if user.is_authenticated else None
         serializer.save(creator=creator)
+
+@api_view(['GET']) # Рекомендується вказати метод GET, якщо це API-ендпоінт
+@permission_classes([AllowAny])
+def liveness_check(request):
+    """
+    Ендпоінт для Liveness Probe.
+    Повертає 200 OK, якщо додаток запущено та працює.
+    """
+    return HttpResponse('ok', status=200)
+
+@api_view(['GET']) # Рекомендується вказати метод GET, якщо це API-ендпоінт
+@permission_classes([AllowAny])
+def readiness_check(request):
+    """
+    Ендпоінт для Readiness Probe.
+    Повертає 200 OK, якщо додаток готовий приймати трафік.
+    У реальних сценаріях тут можуть бути додаткові перевірки,
+    наприклад, підключення до бази даних або зовнішніх сервісів.
+    """
+    return HttpResponse('ok', status=200)

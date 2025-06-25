@@ -1,0 +1,12 @@
+#.infrastructure/busybox.yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox-curl-test
+  namespace: todoapp
+spec:
+  containers:
+  - name: busybox-curl
+    image: ikulyk404/busyboxplus:curl
+    command: ["sh", "-c", "while true; do sleep 3600; done"]
+  restartPolicy: Never
