@@ -56,8 +56,19 @@ urlpatterns = [
     path('health/readiness/', views.readiness_check, name='readiness_check'),
 ]
 
-Create Dockerfile:
-Create a file named Dockerfile in the root directory of your project with the following content:
+Create src/entrypoint.sh:
+Create a file named entrypoint.sh in the src folder of your project with the following content:
+
+#!/bin/sh
+
+echo "Applying database migrations..."
+python manage.py migrate --noinput
+
+echo "Starting Gunicorn server..."
+exec gunicorn --bind 0.0.0.0:8000 todolist.wsgi:application
+
+Update Dockerfile:
+Update the Dockerfile in the src folder of your project with the following content:
 
 # Dockerfile
 FROM python:3.10-slim-buster
@@ -67,18 +78,24 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app/
-RUN python manage.py migrate --noinput
+
+# Copy the entrypoint script and make it executable
+COPY ./entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Use the entrypoint as the main command for the container
+ENTRYPOINT ["/app/entrypoint.sh"]
+
 EXPOSE 8000
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "todolist.wsgi:application"]
 
 Build and Push Docker Image:
-Replace {yourname} with your Docker Hub username.
+Replace {yourname} with your Docker Hub username. Make sure to execute the docker build command from the root of your project, specifying the src folder.
 
 docker login
-docker build -t {yourname}/todoapp:3.0.0 .
+docker build -t {yourname}/todoapp:3.0.0 src # Note the 'src' at the end
 docker push {yourname}/todoapp:3.0.0
 
-Important: Ensure that todolist is the name of your main Django project (the folder containing settings.py and wsgi.py). If the name is different, change todolist.wsgi:application in the Dockerfile accordingly.
+Important: Ensure that todolist is the name of your main Django project (the folder containing settings.py and wsgi.py). If the name is different, change todolist.wsgi:application in entrypoint.sh accordingly.
 
 3. Create Kubernetes Manifests
 All Kubernetes manifests should be located in the .infrastructure folder at the root of your repository.
@@ -106,14 +123,14 @@ metadata:
   name: busybox-curl-test
   namespace: todoapp
 spec:
-  containers:
-  - name: busybox-curl
-    image: ikulyk404/busyboxplus:curl
-    command: ["sh", "-c", "while true; do sleep 3600; done"]
-  restartPolicy: Never
+    containers:
+    - name: busybox-curl
+      image: ikulyk404/busyboxplus:curl
+      command: ["sh", "-c", "while true; do sleep 3600; done"]
+    restartPolicy: Never
 
-Create todoapp-pod.yml:
-Create a file named .infrastructure/todoapp-pod.yml with the following content. Replace {yourname} with your Docker Hub username.
+Update todoapp-pod.yml:
+Update the file .infrastructure/todoapp-pod.yml with the following content. Replace {yourname} with your Docker Hub username.
 
 #.infrastructure/todoapp-pod.yml
 apiVersion: v1
@@ -137,7 +154,7 @@ spec:
     - name: DEBUG
       value: "False"
     - name: ALLOWED_HOSTS
-      value: "localhost,127.0.0.1"
+      value: "*" # Changed from "localhost,127.0.0.1" to "*" for Kubernetes compatibility
 
     livenessProbe:
       httpGet:

@@ -20,7 +20,7 @@ spec:
     - name: DEBUG
       value: "False"
     - name: ALLOWED_HOSTS
-      value: "localhost,127.0.0.1"
+      value: "*" # Змінено: дозволяє запити з будь-яких хостів. Для продакшн-середовища вкажіть конкретні доменні імена або IP.
 
     livenessProbe:
       httpGet:
